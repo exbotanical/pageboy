@@ -2,7 +2,7 @@
 #define VM_H
 
 #include "repl.h"
-#include "table.h"
+#include "pager.h"
 
 /* Enumerations */
 
@@ -21,6 +21,7 @@ typedef enum {
 	PREPARE_SUCCESS, /**< Successful preparation */
 	PREPARE_E_UNRECOGNIZED_STMT, /**< Unrecognized preparative statement */
 	PREPARE_E_SYNTAX, /**< Syntax error */
+	PREPARE_E_MAX_CH, /**< Max characters exceeded */
 } PrepareResult;
 
 /**
@@ -51,10 +52,12 @@ typedef struct {
 
 /* Functions */
 
-MetaCommandResult proc_meta_cmd(InputBuffer* ib);
+MetaCommandResult proc_meta_cmd(InputBuffer* ib, Table* table);
 
 PrepareResult prepare_statement(InputBuffer* ib, Statement* stmt);
 
 ExecuteStatementResult exec_statement(Statement* stmt, Table* table);
+
+PrepareResult prepare_insert(InputBuffer* ib, Statement* stmt);
 
 #endif

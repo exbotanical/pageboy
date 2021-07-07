@@ -1,7 +1,7 @@
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 
-#include "table.h"
+#include "pager.h"
 
 void serialize_row(Row *src, void *dest);
 

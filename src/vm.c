@@ -13,6 +13,7 @@
 #include "common.h"
 #include "repl.h"
 #include "statement.h"
+#include "pager.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -24,10 +25,40 @@
  * @param ib
  * @return MetaCommandResult
  */
-MetaCommandResult proc_meta_cmd(InputBuffer *ib) {
+MetaCommandResult proc_meta_cmd(InputBuffer* ib, Table* table) {
 	if (strcmp(ib->buffer, ".exit") == 0) {
+		db_close(table);
 		exit(EXIT_SUCCESS);
 	} else return META_E_UNRECOGNIZED_CMD;
+}
+
+/**
+ * @brief Prepare an insert statement
+ *
+ * @param ib
+ * @param stmt
+ * @return PrepareResult
+ */
+PrepareResult prepare_insert(InputBuffer* ib, Statement* stmt) {
+	stmt->type = STATEMENT_INSERT;
+
+	char* keyword = strtok(ib->buffer, " ");
+	char* id_str = strtok(NULL, " ");
+	char* uname = strtok(NULL, " ");
+	char* email = strtok(NULL, " ");
+
+	if (!id_str || !uname || !email) return PREPARE_E_SYNTAX;
+
+	int id = atoi(id_str);
+
+	if (strlen(uname) > COL_UNAME_SIZE) return PREPARE_E_MAX_CH;
+
+	stmt->row.id = id;
+
+	strcpy(stmt->row.uname, uname);
+	strcpy(stmt->row.email, email);
+
+	return PREPARE_SUCCESS;
 }
 
 /**
@@ -39,19 +70,7 @@ MetaCommandResult proc_meta_cmd(InputBuffer *ib) {
  */
 PrepareResult prepare_statement(InputBuffer* ib, Statement* stmt) {
 	if (strncmp(ib->buffer, "insert", 6) == 0) {
-		stmt->type = STATEMENT_INSERT;
-
-		int argv = sscanf(
-			ib->buffer,
-			"insert %d %s %s",
-			&(stmt->row.id),
-			stmt->row.uname,
-			stmt->row.email
-		);
-
-		if (argv < 3) return PREPARE_E_SYNTAX;
-
-		return PREPARE_SUCCESS;
+		return prepare_insert(ib, stmt);
 	}
 
 	if (strcmp(ib->buffer, "select") == 0) {
