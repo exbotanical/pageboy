@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "repl.h"
+#include "statement.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -26,7 +27,7 @@
 MetaCommandResult proc_meta_cmd(InputBuffer *ib) {
 	if (strcmp(ib->buffer, ".exit") == 0) {
 		exit(EXIT_SUCCESS);
-	} else return META_CMD_UNRECOGNIZED_CMD;
+	} else return META_E_UNRECOGNIZED_CMD;
 }
 
 /**
@@ -40,11 +41,22 @@ PrepareResult prepare_statement(InputBuffer* ib, Statement* stmt) {
 	if (strncmp(ib->buffer, "insert", 6) == 0) {
 		stmt->type = STATEMENT_INSERT;
 
+		int argv = sscanf(
+			ib->buffer,
+			"insert %d %s %s",
+			&(stmt->row.id),
+			stmt->row.uname,
+			stmt->row.email
+		);
+
+		if (argv < 3) return PREPARE_E_SYNTAX;
+
 		return PREPARE_SUCCESS;
 	}
 
 	if (strcmp(ib->buffer, "select") == 0) {
 		stmt->type = STATEMENT_SELECT;
+
 		return PREPARE_SUCCESS;
 	}
 
@@ -54,15 +66,17 @@ PrepareResult prepare_statement(InputBuffer* ib, Statement* stmt) {
 /**
  * @brief Execute a prepared statement
  *
- * @param stmt pointer to a prepared statement
+ * @param stmt pointer to a prepared statemen
+ * @param table
+ * @return ExecuteStatementResult
  */
-void exec_statement(Statement* stmt) {
+ExecuteStatementResult exec_statement(Statement* stmt, Table* table) {
 	switch (stmt->type) {
 		case STATEMENT_INSERT:
-			printf("insert\n");
-			break;
+			return execute_insert(stmt, table);
 		case STATEMENT_SELECT:
-			printf("select\n");
-			break;
+			return execute_select(stmt, table);
 	}
+
+	return EXEC_SUCCESS; // todo
 }

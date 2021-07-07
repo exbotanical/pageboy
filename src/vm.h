@@ -2,6 +2,7 @@
 #define VM_H
 
 #include "repl.h"
+#include "table.h"
 
 /* Enumerations */
 
@@ -9,8 +10,8 @@
  * @brief Meta Command execution result
  */
 typedef enum {
-	META_CMD_SUCCESS, /**< Meta Cmd was successful */
-	META_CMD_UNRECOGNIZED_CMD, /**< Meta Cmd, unrecognized directive */
+	META_SUCCESS, /**< Meta Cmd was successful */
+	META_E_UNRECOGNIZED_CMD, /**< Meta Cmd, unrecognized directive */
 } MetaCommandResult;
 
 /**
@@ -30,6 +31,14 @@ typedef enum {
 	STATEMENT_SELECT,
 } StatementType;
 
+/**
+ * @brief Statement execution return code
+ */
+typedef enum {
+	EXEC_SUCCESS,
+	EXEC_E_TABLE_CAP,
+} ExecuteStatementResult;
+
 /* Structures */
 
 /**
@@ -37,14 +46,15 @@ typedef enum {
  */
 typedef struct {
 	StatementType type;
+	Row row;
 } Statement;
 
 /* Functions */
 
-MetaCommandResult proc_meta_cmd(InputBuffer *ib);
+MetaCommandResult proc_meta_cmd(InputBuffer* ib);
 
-PrepareResult prepare_statement(InputBuffer *ib, Statement *stmt);
+PrepareResult prepare_statement(InputBuffer* ib, Statement* stmt);
 
-void exec_statement(Statement *stmt);
+ExecuteStatementResult exec_statement(Statement* stmt, Table* table);
 
 #endif

@@ -12,7 +12,7 @@
  *
  * @return InputBuffer*
  */
-InputBuffer* ib_init(void) {
+InputBuffer* ib_alloc(void) {
 	InputBuffer* ib = malloc(sizeof(InputBuffer));
 	ib->buffer = NULL;
 	ib->buffer_l = 0;

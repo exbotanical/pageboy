@@ -13,7 +13,7 @@ typedef struct {
 
 /* Functions */
 
-InputBuffer *ib_init(void);
+InputBuffer *ib_alloc(void);
 
 void ib_free(InputBuffer *ib);
 
