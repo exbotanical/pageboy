@@ -25,19 +25,19 @@ void serialize_row(Row* src, void* dest) {
 
 void deserialize_row(void* src, Row* dest) {
 	memcpy(
-		dest->id,
+		&(dest->id),
 		src + ID_OFFSET,
 		ID_SIZE
 	);
 
 	memcpy(
-		dest->uname,
+		&(dest->uname),
 		src + UNAME_OFFSET,
 		UNAME_SIZE
 	);
 
 	memcpy(
-		dest->email,
+		&(dest->email),
 		src + EMAIL_OFFSET,
 		EMAIL_SIZE
 	);
