@@ -1,7 +1,14 @@
-# env
+###################
+### Environment ###
+###################
+
 BIN_NAME=pageboy
 
-# util
+#################
+### Utilities ###
+#################
+
+# ensure binary exists
 check_bin() {
 	if [[ ! -f $BIN_NAME ]]; then
 		echo 0
@@ -10,6 +17,8 @@ check_bin() {
 	fi
 }
 
+# feed each line of input to interactive session;
+# echo output from said session
 run_command_sequence() {
 	OG_IFS=$IFS
 	IFS='>'
@@ -19,7 +28,7 @@ run_command_sequence() {
 $(for_each ${@})
 .exit
 END
-) | ./$BIN_NAME)
+) | ./$BIN_NAME test.db)
 
 	data=${data//pageboy/#}
 
@@ -28,8 +37,11 @@ END
 	IFS="$OG_IFS"
 }
 
+######################
+### Meta Utilities ###
+######################
 
-# meta util
+# exit immediately
 panic () {
   local exit_status=$1
 
@@ -39,10 +51,12 @@ panic () {
   exit $exit_status
 }
 
+# generate timestamp
 current_time () {
   echo $(date +'%Y-%m-%dT%H:%M:%S%z')
 }
 
+# augment each item in an array :: "item" -> "item;"
 for_each () {
   local -a arr=($@)
 
