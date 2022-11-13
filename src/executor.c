@@ -11,20 +11,24 @@ ExecutionResult execute_insert(Statement* statement, Table* table) {
   }
 
   Row* row = &(statement->row);
-  serialize_row(row, row_slot(table, table->num_rows));
+  Cursor* cursor = cursor_end_init(table);
+  serialize_row(row, cursor_value(cursor));
   table->num_rows++;
 
+  free(cursor);
   return EXECUTE_SUCCESS;
 }
 
 ExecutionResult execute_select(Statement* statement, Table* table) {
   Row row;
-
-  for (uint32_t i = 0; i < table->num_rows; i++) {
-    deserialize_row(row_slot(table, i), &row);
+  Cursor* cursor = cursor_start_init(table);
+  while (!(cursor->end)) {
+    deserialize_row(cursor_value(cursor), &row);
     printf("(%d, %s, %s)\n", row.id, row.username, row.email);
+    cursor_advance(cursor);
   }
 
+  free(cursor);
   return EXECUTE_SUCCESS;
 }
 

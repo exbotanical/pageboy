@@ -102,7 +102,7 @@ describe 'pageboy'
   it 'persists data between executions'
     run_command_sequence "insert 1 $username $email"
     result=$(run_command_sequence 'select')
-    assert equal "#$EXECUTED(1,$username,$email)$EXECUTED" "$result"
+    assert equal "#(1,$username,$email)$EXECUTED" "$result"
   ti
 
 end_describe

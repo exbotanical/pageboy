@@ -1,6 +1,7 @@
 #ifndef PAGER_H
 #define PAGER_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -27,6 +28,12 @@ typedef struct {
   char email[COLUMN_EMAIL_SIZE + 1];
 } Row;
 
+typedef struct {
+  Table* table;
+  uint32_t row_num;
+  bool end;  // where end is 1 position past the last element
+} Cursor;
+
 static const uint32_t ID_SIZE = sizeof_attr(Row, id);
 static const uint32_t USERNAME_SIZE = sizeof_attr(Row, username);
 static const uint32_t EMAIL_SIZE = sizeof_attr(Row, email);
@@ -44,8 +51,6 @@ Table* db_open(const char* filename);
 
 void db_close(Table* table);
 
-void* row_slot(Table* table, uint32_t row_num);
-
 Pager* pager_open(const char* filename);
 
 void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
@@ -55,5 +60,13 @@ void* get_page(Pager* pager, uint32_t page_num);
 void serialize_row(Row* src, void* dest);
 
 void deserialize_row(void* src, Row* dest);
+
+void* cursor_value(Cursor* cursor);
+
+Cursor* cursor_start_init(Table* table);
+
+Cursor* cursor_end_init(Table* table);
+
+void cursor_advance(Cursor* cursor);
 
 #endif /* PAGER_H */

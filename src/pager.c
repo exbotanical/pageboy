@@ -60,10 +60,11 @@ void db_close(Table* table) {
   free(table);
 }
 
-void* row_slot(Table* table, uint32_t row_num) {
+void* cursor_value(Cursor* cursor) {
+  uint32_t row_num = cursor->row_num;
   uint32_t page_num = row_num / ROWS_PER_PAGE;
 
-  void* page = get_page(table->pager, page_num);
+  void* page = get_page(cursor->table->pager, page_num);
 
   uint32_t row_offset = row_num % ROWS_PER_PAGE;
   uint32_t byte_offset = row_offset * ROW_SIZE;
@@ -145,4 +146,29 @@ void deserialize_row(void* src, Row* dest) {
   memcpy(&(dest->id), src + ID_OFFSET, ID_SIZE);
   memcpy(&(dest->username), src + USERNAME_OFFSET, USERNAME_SIZE);
   memcpy(&(dest->email), src + EMAIL_OFFSET, EMAIL_SIZE);
+}
+
+Cursor* cursor_start_init(Table* table) {
+  Cursor* cursor = malloc(sizeof(Cursor));
+  cursor->table = table;
+  cursor->row_num = 0;
+  cursor->end = (table->num_rows == 0);
+
+  return cursor;
+}
+
+Cursor* cursor_end_init(Table* table) {
+  Cursor* cursor = malloc(sizeof(Cursor));
+  cursor->table = table;
+  cursor->row_num = table->num_rows;
+  cursor->end = true;
+
+  return cursor;
+}
+
+void cursor_advance(Cursor* cursor) {
+  cursor->row_num++;
+  if (cursor->row_num >= cursor->table->num_rows) {
+    cursor->end = true;
+  }
 }
