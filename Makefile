@@ -19,3 +19,16 @@ clean:
 
 install: $(TARGET)
 	install -m 0777 $(TARGET) $(DEST)/$(TARGET)
+
+run: $(TARGET)
+	./pageboy test.db
+
+test: $(TARGET)
+	shpec t/*_shpec.bash
+
+test_watch: $(TARGET)
+	ls t/*_shpec.bash | entr shpec
+
+# Install test dependencies
+install_test_deps:
+	./scripts/install_test_deps.bash

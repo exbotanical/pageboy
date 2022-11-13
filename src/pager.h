@@ -1,45 +1,40 @@
-#ifndef TABLE_H
-#define TABLE_H
+#ifndef PAGER_H
+#define PAGER_H
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+
+#include "common.h"
 
 #define sizeof_attr(Struct, Attr) sizeof(((Struct*)0)->Attr)
 
 #define TABLE_MAX_PAGES 100
 
-#define COL_UNAME_SIZE 32
-#define COL_EM_SIZE 255
-
-/**
- * @brief Interface for handling pages; the Table object
- * makes requests for pages via the Pager
- */
 typedef struct {
-	int file_descriptor;
-	uint32_t file_s;
-	void* pages[TABLE_MAX_PAGES];
+  int fd;
+  uint32_t file_s;
+  void* pages[TABLE_MAX_PAGES];
 } Pager;
 
 typedef struct {
-	uint32_t rows_n;
-	Pager* pager;
+  uint32_t num_rows;
+  Pager* pager;
 } Table;
 
 typedef struct {
-	uint32_t id;
-	char uname[COL_UNAME_SIZE - 1];
-	char email[COL_EM_SIZE - 1];
+  uint32_t id;
+  char username[COLUMN_USERNAME_SIZE + 1];
+  char email[COLUMN_EMAIL_SIZE + 1];
 } Row;
 
 static const uint32_t ID_SIZE = sizeof_attr(Row, id);
-static const uint32_t UNAME_SIZE = sizeof_attr(Row, uname);
+static const uint32_t USERNAME_SIZE = sizeof_attr(Row, username);
 static const uint32_t EMAIL_SIZE = sizeof_attr(Row, email);
 
 static const uint32_t ID_OFFSET = 0;
-static const uint32_t UNAME_OFFSET = ID_OFFSET + ID_SIZE;
-static const uint32_t EMAIL_OFFSET = UNAME_OFFSET + UNAME_SIZE;
-static const uint32_t ROW_SIZE = ID_SIZE + UNAME_SIZE + EMAIL_SIZE;
+static const uint32_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
+static const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
+static const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
 static const uint32_t PAGE_SIZE = 4096;
 static const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
@@ -49,12 +44,16 @@ Table* db_open(const char* filename);
 
 void db_close(Table* table);
 
-void* row_slot(Table* table, uint32_t row_n);
+void* row_slot(Table* table, uint32_t row_num);
 
 Pager* pager_open(const char* filename);
 
-void* get_page(Pager* pager, uint32_t page_n);
+void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
 
-void pager_flush(Pager* pager, uint32_t page_n, uint32_t size);
+void* get_page(Pager* pager, uint32_t page_num);
 
-#endif
+void serialize_row(Row* src, void* dest);
+
+void deserialize_row(void* src, Row* dest);
+
+#endif /* PAGER_H */

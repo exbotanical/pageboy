@@ -1,10 +1,16 @@
 #ifndef STATEMENT_H
 #define STATEMENT_H
 
-#include "vm.h"
+#include "pager.h"
 
-ExecuteStatementResult execute_insert(Statement* stmt, Table* table);
+typedef enum {
+  STATEMENT_INSERT,
+  STATEMENT_SELECT,
+} StatementType;
 
-ExecuteStatementResult execute_select(Statement *stmt, Table *table);
+typedef struct {
+  StatementType type;
+  Row row;
+} Statement;
 
 #endif

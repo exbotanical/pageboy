@@ -1,91 +1,71 @@
-#include "common.h"
-#include "repl.h"
-#include "vm.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common.h"
+#include "executor.h"
+#include "io.h"
+#include "metacommand.h"
+#include "preparator.h"
+
 int main(int argc, char* argv[]) {
-	if (argc < 2) {
-		DIE("%s\n", "Must provide a database filename");
-	}
+  if (argc < 2) {
+    DIE("%s\n", "Must provide a database filename");
+  }
 
-	char* filename = argv[1];
-	Table* table = db_open(filename);
+  char* filename = argv[1];
+  Table* table = db_open(filename);
 
-	InputBuffer* ib = ib_alloc();
+  StringBuffer* buffer = string_buffer_init();
 
-	while (1) {
-		rprompt();
-		ib_read(ib);
+  while (1) {
+    print_prompt();
+    string_buffer_read(buffer);
 
-		if (ib->buffer[0] == '.') {
-			switch(proc_meta_cmd(ib, table)) {
-				case META_SUCCESS:
-					continue;
-				case META_E_UNRECOGNIZED_CMD:
-					fprintf(
-						stderr,
-						"Unrecognized command '%s'\n",
-						ib->buffer
-					);
-					continue;
-			}
-		}
+    if (buffer->buffer[0] == '.') {
+      switch (process_meta_command(buffer, table)) {
+        case META_COMMAND_SUCCESS:
+          continue;
+        case META_COMMAND_UNRECOGNIZED:
+          fprintf(stderr, "Unrecognized command '%s'\n", buffer->buffer);
+          continue;
+      }
+    }
 
-		Statement statement;
+    Statement statement;
 
-		switch (prepare_statement(ib, &statement)) {
-			case PREPARE_SUCCESS:
-				break;
-			case PREPARE_E_SYNTAX:
-				fprintf(
-					stderr,
-					"%s\n",
-					"Syntax error; cannot execute statement"
-				);
+    switch (prepare_statement(buffer, &statement)) {
+      case PREPARE_SUCCESS:
+        break;
+      case PREPARE_SYNTAX_ERROR:
+        fprintf(stderr, "%s\n", "Syntax error. Could not parse statement");
+        continue;
+      case PREPARE_UNRECOGNIZED_STATEMENT:
+        fprintf(stderr, "Unrecognized keyword at start of '%s'\n",
+                buffer->buffer);
+        continue;
+      case PREPARE_INPUT_TOO_LONG:
+        fprintf(stderr, "%s\n", "Provided input was too long");
+        continue;
+      case PREPARE_NEGATIVE_ID:
+        fprintf(stderr, "%s\n", "Provided negative id");
+        continue;
+      default:
+        fprintf(stderr, "%s\n",
+                "[main::PrepareStatement] An error occurred (TODO:)");
+    }
 
-				continue;
-			case PREPARE_E_UNRECOGNIZED_STMT:
-				fprintf(
-					stderr,
-					"Unrecognized keyword at start of '%s'\n",
-					ib->buffer
-				);
+    switch (execute_statement(&statement, table)) {
+      case EXECUTE_SUCCESS:
+        fprintf(stdout, "%s\n", "Executed statement");
 
-				continue;
+        break;
 
-			case PREPARE_E_MAX_CH:
-				fprintf(
-					stderr,
-					"%s\n",
-					"Max characters exceeded"
-				);
+      case EXECUTE_TABLE_FULL:
+        fprintf(stderr, "%s\n", "Table memory full");
 
-				continue;
-		}
+        break;
+    }
+  }
 
-		switch(exec_statement(&statement, table)) {
-			case EXEC_SUCCESS:
-				fprintf(
-					stdout,
-					"%s\n",
-					"Executed statement"
-				);
-
-				break;
-
-			case EXEC_E_TABLE_CAP:
-				fprintf(
-					stderr,
-					"%s\n",
-					"Table memory full"
-				);
-
-				break;
-		}
-
-	}
-
-	return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

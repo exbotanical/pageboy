@@ -1,12 +1,4 @@
-###################
-### Environment ###
-###################
-
 BIN_NAME=pageboy
-
-#################
-### Utilities ###
-#################
 
 # ensure binary exists
 check_bin() {
@@ -30,16 +22,12 @@ $(for_each ${@})
 END
 ) | ./$BIN_NAME test.db)
 
-	data=${data//pageboy/#}
+  data=${data//pageboy/#}
 
 	echo $data | tr -d '[:space:]'
 
 	IFS="$OG_IFS"
 }
-
-######################
-### Meta Utilities ###
-######################
 
 # exit immediately
 panic () {
