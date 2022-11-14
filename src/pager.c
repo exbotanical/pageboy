@@ -14,34 +14,28 @@ Table* db_open(const char* filename) {
   Table* table = malloc(sizeof(Table));
 
   table->pager = pager;
-  table->num_rows = pager->file_s / ROW_SIZE;
+  table->root_page_num = 0;
+
+  if (pager->num_pages == 0) {
+    // new file - initialize page 0 as leaf node
+    void* root_node = get_page(pager, 0);
+    leaf_node_init(root_node);
+  }
 
   return table;
 }
 
 void db_close(Table* table) {
   Pager* pager = table->pager;
-  uint32_t num_full_pages = table->num_rows / ROWS_PER_PAGE;
 
-  for (uint32_t i = 0; i < num_full_pages; i++) {
+  for (uint32_t i = 0; i < pager->num_pages; i++) {
     if (!pager->pages[i]) {
       continue;
     }
 
-    pager_flush(pager, i, PAGE_SIZE);
+    pager_flush(pager, i);
     free(pager->pages[i]);
     pager->pages[i] = NULL;
-  }
-
-  uint32_t num_additional_rows = table->num_rows % ROWS_PER_PAGE;
-  if (num_additional_rows > 0) {
-    uint32_t page_num = num_full_pages;
-
-    if (pager->pages[page_num]) {
-      pager_flush(pager, page_num, num_additional_rows * ROW_SIZE);
-      free(pager->pages[page_num]);
-      pager->pages[page_num] = NULL;
-    }
   }
 
   if (close(pager->fd) == -1) {
@@ -60,18 +54,6 @@ void db_close(Table* table) {
   free(table);
 }
 
-void* cursor_value(Cursor* cursor) {
-  uint32_t row_num = cursor->row_num;
-  uint32_t page_num = row_num / ROWS_PER_PAGE;
-
-  void* page = get_page(cursor->table->pager, page_num);
-
-  uint32_t row_offset = row_num % ROWS_PER_PAGE;
-  uint32_t byte_offset = row_offset * ROW_SIZE;
-
-  return page + byte_offset;
-}
-
 Pager* pager_open(const char* filename) {
   int fd;
 
@@ -79,11 +61,16 @@ Pager* pager_open(const char* filename) {
     DIE("%s\n", "Unable to open file");
   }
 
-  off_t file_s = lseek(fd, 0, SEEK_END);
+  off_t file_len = lseek(fd, 0, SEEK_END);
 
   Pager* pager = malloc(sizeof(Pager));
   pager->fd = fd;
-  pager->file_s = file_s;
+  pager->file_len = file_len;
+  pager->num_pages = (file_len / PAGE_SIZE);
+
+  if (file_len % PAGE_SIZE != 0) {
+    DIE("%s\n", "db file is corrupt");
+  }
 
   for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
     pager->pages[i] = NULL;
@@ -101,10 +88,10 @@ void* get_page(Pager* pager, uint32_t page_num) {
   if (!pager->pages[page_num]) {
     // cache miss; alloc and load from file
     void* page = malloc(PAGE_SIZE);
-    uint32_t num_pages = pager->file_s / PAGE_SIZE;
+    uint32_t num_pages = pager->file_len / PAGE_SIZE;
 
     // save partial page at end of file
-    if (pager->file_s % PAGE_SIZE) {
+    if (pager->file_len % PAGE_SIZE) {
       num_pages++;
     }
 
@@ -117,12 +104,16 @@ void* get_page(Pager* pager, uint32_t page_num) {
     }
 
     pager->pages[page_num] = page;
+
+    if (page_num >= pager->num_pages) {
+      pager->num_pages = page_num + 1;
+    }
   }
 
   return pager->pages[page_num];
 }
 
-void pager_flush(Pager* pager, uint32_t page_num, uint32_t size) {
+void pager_flush(Pager* pager, uint32_t page_num) {
   if (!pager->pages[page_num]) {
     DIE("%s\n", "Attempted to flush null page");
   }
@@ -131,7 +122,7 @@ void pager_flush(Pager* pager, uint32_t page_num, uint32_t size) {
     DIE("Error seeking: %d\n", errno);
   }
 
-  if (write(pager->fd, pager->pages[page_num], size) == -1) {
+  if (write(pager->fd, pager->pages[page_num], PAGE_SIZE) == -1) {
     DIE("Error writing: %d\n", errno);
   }
 }
@@ -151,8 +142,12 @@ void deserialize_row(void* src, Row* dest) {
 Cursor* cursor_start_init(Table* table) {
   Cursor* cursor = malloc(sizeof(Cursor));
   cursor->table = table;
-  cursor->row_num = 0;
-  cursor->end = (table->num_rows == 0);
+  cursor->cell_num = 0;
+  cursor->page_num = table->root_page_num;
+
+  void* root_node = get_page(table->pager, table->root_page_num);
+  uint32_t num_cells = *leaf_node_num_cells(root_node);
+  cursor->end = (num_cells == 0);
 
   return cursor;
 }
@@ -160,15 +155,70 @@ Cursor* cursor_start_init(Table* table) {
 Cursor* cursor_end_init(Table* table) {
   Cursor* cursor = malloc(sizeof(Cursor));
   cursor->table = table;
-  cursor->row_num = table->num_rows;
+  cursor->page_num = table->root_page_num;
+
+  void* root_node = get_page(table->pager, table->root_page_num);
+  uint32_t num_cells = *leaf_node_num_cells(root_node);
+  cursor->cell_num = num_cells;
+
   cursor->end = true;
 
   return cursor;
 }
 
+void* cursor_value(Cursor* cursor) {
+  uint32_t page_num = cursor->page_num;
+  void* page = get_page(cursor->table->pager, page_num);
+
+  return leaf_node_value(page, cursor->cell_num);
+}
+
 void cursor_advance(Cursor* cursor) {
-  cursor->row_num++;
-  if (cursor->row_num >= cursor->table->num_rows) {
+  uint32_t page_num = cursor->page_num;
+  void* node = get_page(cursor->table->pager, page_num);
+
+  cursor->cell_num++;
+  if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
     cursor->end = true;
   }
+}
+
+uint32_t* leaf_node_num_cells(void* node) {
+  return node + LEAF_NODE_NUM_CELLS_OFFSET;
+}
+
+void* leaf_node_cell(void* node, uint32_t cell_num) {
+  return node + LEAF_NODE_HEADER_SIZE + cell_num * LEAF_NODE_CELL_SIZE;
+}
+
+uint32_t* leaf_node_key(void* node, uint32_t cell_num) {
+  return leaf_node_cell(node, cell_num) + LEAF_NODE_KEY_SIZE;
+}
+
+void* leaf_node_value(void* node, uint32_t cell_num) {
+  return leaf_node_cell(node, cell_num) + LEAF_NODE_KEY_SIZE;
+}
+
+void leaf_node_init(void* node) { *leaf_node_num_cells(node) = 0; }
+
+void leaf_node_insert(Cursor* cursor, uint32_t key, Row* value) {
+  void* node = get_page(cursor->table->pager, cursor->page_num);
+
+  uint32_t num_cells = *leaf_node_num_cells(node);
+  if (num_cells >= LEAF_NODE_MAX_CELLS) {
+    // node full
+    DIE("%s\n", "TODO");
+  }
+
+  if (cursor->cell_num < num_cells) {
+    // allocate room for new cell
+    for (uint32_t i = num_cells; i > cursor->cell_num; i--) {
+      memcpy(leaf_node_cell(node, i), leaf_node_cell(node, i - 1),
+             LEAF_NODE_CELL_SIZE);
+    }
+  }
+
+  *(leaf_node_num_cells(node)) += 1;
+  *(leaf_node_key(node, cursor->cell_num)) = key;
+  serialize_row(value, leaf_node_value(node, cursor->cell_num));
 }

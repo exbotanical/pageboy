@@ -9,6 +9,10 @@ check_bin() {
 	fi
 }
 
+run_command() {
+  ./$BIN_NAME test.db
+}
+
 # feed each line of input to interactive session;
 # echo output from said session
 run_command_sequence() {

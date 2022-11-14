@@ -6,14 +6,16 @@
 #include "pager.h"
 
 ExecutionResult execute_insert(Statement* statement, Table* table) {
-  if (table->num_rows >= TABLE_MAX_ROWS) {
+  void* node = get_page(table->pager, table->root_page_num);
+
+  if ((*leaf_node_num_cells(node) >= LEAF_NODE_MAX_CELLS)) {
     return EXECUTE_TABLE_FULL;
   }
 
   Row* row = &(statement->row);
   Cursor* cursor = cursor_end_init(table);
-  serialize_row(row, cursor_value(cursor));
-  table->num_rows++;
+
+  leaf_node_insert(cursor, row->id, row);
 
   free(cursor);
   return EXECUTE_SUCCESS;
