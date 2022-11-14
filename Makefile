@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -std=c17
+CFLAGS=-Wall -Wextra -pedantic -Wno-pointer-arith -std=c17
 LDFLAGS=
 OBJFILES=$(wildcard src/*.c)
 TARGET=pageboy

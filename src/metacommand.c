@@ -1,5 +1,6 @@
 #include "metacommand.h"
 
+#include <stdio.h>
 #include <string.h>
 
 MetaCommandResult process_meta_command(StringBuffer* buffer, Table* table) {

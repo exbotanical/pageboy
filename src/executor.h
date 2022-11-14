@@ -7,6 +7,7 @@
 typedef enum {
   EXECUTE_SUCCESS,
   EXECUTE_TABLE_FULL,
+  EXECUTE_DUPLICATE_KEY,
 } ExecutionResult;
 
 ExecutionResult execute_insert(Statement* statement, Table* table);

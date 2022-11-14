@@ -8,12 +8,17 @@
 ExecutionResult execute_insert(Statement* statement, Table* table) {
   void* node = get_page(table->pager, table->root_page_num);
 
-  if ((*leaf_node_num_cells(node) >= LEAF_NODE_MAX_CELLS)) {
-    return EXECUTE_TABLE_FULL;
-  }
+  uint32_t num_cells = (*leaf_node_num_cells(node));
 
   Row* row = &(statement->row);
-  Cursor* cursor = cursor_end_init(table);
+  uint32_t key = row->id;
+  Cursor* cursor = table_find_by_key(table, key);
+
+  if (cursor->cell_num < num_cells) {
+    if (*leaf_node_key(node, cursor->cell_num) == key) {
+      return EXECUTE_DUPLICATE_KEY;
+    }
+  }
 
   leaf_node_insert(cursor, row->id, row);
 

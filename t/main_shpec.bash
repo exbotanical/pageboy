@@ -45,7 +45,7 @@ describe 'pageboy'
   it 'outputs an error message when the table is at capacity'
     local rc=""
     for (( c=1; c <= $MAX_CAPACITY + 1; c++ )); do
-      rc+='insert 1 a a>'
+      rc+="insert $c a a>"
     done
 
     local result=$((run_command_sequence $rc) 2>&1)

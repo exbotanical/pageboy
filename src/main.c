@@ -57,15 +57,16 @@ int main(int argc, char* argv[]) {
     switch (execute_statement(&statement, table)) {
       case EXECUTE_SUCCESS:
         fprintf(stdout, "%s\n", "Executed statement");
-
         break;
 
       case EXECUTE_TABLE_FULL:
         fprintf(stderr, "%s\n", "Table memory full");
+        break;
 
+      case EXECUTE_DUPLICATE_KEY:
+        fprintf(stderr, "%s\n", "Duplicate key");
         break;
     }
   }
-
   return EXIT_SUCCESS;
 }
