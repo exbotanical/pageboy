@@ -12,7 +12,7 @@ shopt -s expand_aliases
 # in a subshell (i.e. its own closure) so as not to pollute the
 # global namespace; we also pass along shpec variables that
 # must be extant in both contexts
-alias it='(_shpec_failures=0; alias setup=setup &>/dev/null && { setup; unalias setup; alias teardown=teardown &>/dev/null && trap teardown EXIT ;}; it'
+alias it='(_shpec_failures=0; alias setup &>/dev/null && { setup; unalias setup; alias teardown &>/dev/null && trap teardown EXIT ;}; it'
 # shellcheck disable=SC2154
 alias ti='return "$_shpec_failures"); (( _shpec_failures += $?, _shpec_examples++ ))'
 alias end_describe='end; unalias setup teardown 2>/dev/null'
@@ -21,16 +21,7 @@ alias end_describe='end; unalias setup teardown 2>/dev/null'
 ### Tests ###
 #############
 
-setup () {
-	rm $DB_FILE &> /dev/null
-	touch $DB_FILE
-}
-
-teardown () {
-	rm $DB_FILE
-}
-
-DB_FILE=test.db
+DB_FILE='test.db'
 
 # This is a little trick we use to capture the
 # program's output by framing stdout
@@ -41,6 +32,10 @@ EMAIL='user@username.com'
 USERNAME='user'
 
 describe 'pageboy'
+
+  alias setup="rm $DB_FILE &> /dev/null && touch $DB_FILE"
+  alias teardown="rm $DB_FILE"
+
   it 'inserts and retrieves a row'
     result=$(run_command_sequence "insert 1 $USERNAME $EMAIL" 'select')
     assert equal "#$EXECUTED(1,$USERNAME,$EMAIL)$EXECUTED" "$result"
