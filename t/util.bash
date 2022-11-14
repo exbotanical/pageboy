@@ -19,40 +19,26 @@ run_command_sequence() {
 	OG_IFS=$IFS
 	IFS='>'
 
-	data=$((
+	data=$( (
 	cat <<END
-$(for_each ${@})
+$(for_each "${@}")
 .exit
 END
 ) | ./$BIN_NAME test.db)
 
   data=${data//pageboy/#}
 
+  # shellcheck disable=SC2086
 	echo $data | tr -d '[:space:]'
 
 	IFS="$OG_IFS"
 }
 
-# exit immediately
-panic () {
-  local exit_status=$1
-
-  shift
-
-  echo "[-] ERROR ($(current_time)): $*" >&2
-  exit $exit_status
-}
-
-# generate timestamp
-current_time () {
-  echo $(date +'%Y-%m-%dT%H:%M:%S%z')
-}
-
 # augment each item in an array :: "item" -> "item;"
 for_each () {
-  local -a arr=($@)
+  local -a arr=("$@")
 
   for item in "${arr[@]}"; do
-    echo $item;
+    echo "$item";
   done
 }

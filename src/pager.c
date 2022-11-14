@@ -143,14 +143,15 @@ void deserialize_row(void* src, Row* dest) {
   memcpy(&(dest->email), src + EMAIL_OFFSET, EMAIL_SIZE);
 }
 
+/**
+ * @brief Return the position of the lowest id (start of left-most leaf node)
+ */
 Cursor* cursor_start_init(Table* table) {
-  Cursor* cursor = malloc(sizeof(Cursor));
-  cursor->table = table;
-  cursor->cell_num = 0;
-  cursor->page_num = table->root_page_num;
+  Cursor* cursor = table_find_by_key(table, 0);
 
-  void* root_node = get_page(table->pager, table->root_page_num);
-  uint32_t num_cells = *leaf_node_num_cells(root_node);
+  void* node = get_page(table->pager, cursor->page_num);
+  uint32_t num_cells = *leaf_node_num_cells(node);
+
   cursor->end = (num_cells == 0);
 
   return cursor;
@@ -169,7 +170,7 @@ Cursor* table_find_by_key(Table* table, uint32_t key) {
     return leaf_node_find(table, root_page_num, key);
   }
 
-  DIE("%s\n", "TODO - search internal node");
+  return internal_node_find(table, root_page_num, key);
 }
 
 void* cursor_value(Cursor* cursor) {
@@ -185,6 +186,15 @@ void cursor_advance(Cursor* cursor) {
 
   cursor->cell_num++;
   if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
-    cursor->end = true;
+    // Check if the leaf node has a sibling.
+    // If extant, jump to it; else, end of table reached.
+    uint32_t next_page_num = *leaf_node_next_leaf(node);
+    if (next_page_num == 0) {
+      // node was right-most leaf
+      cursor->end = true;
+    } else {
+      cursor->page_num = next_page_num;
+      cursor->cell_num = 0;
+    }
   }
 }
