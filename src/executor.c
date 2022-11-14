@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "btree.h"
 #include "pager.h"
 
 ExecutionResult execute_insert(Statement* statement, Table* table) {
